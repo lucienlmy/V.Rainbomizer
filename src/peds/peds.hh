@@ -35,6 +35,8 @@ public:
             bool        EnableNoLowBudget        = true;
             bool        EnableBlipsAlwaysVisible = true;
             int         OddsOfPlayerModels       = 20;
+            bool        UseCutsceneModelMapping  = true;
+            std::string CutsceneModelMappingFile = "CutsceneModelMapping.txt";
         } m_Config;
 
         return m_Config;

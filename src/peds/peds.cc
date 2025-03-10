@@ -1,4 +1,4 @@
-#include "peds.hh"
+﻿#include "peds.hh"
 #include "clothes_Queue.hh"
 
 #include <cstdint>
@@ -28,6 +28,8 @@ class PedRandomizer
     using PR = PedRandomizer_Components;
 
     inline static std::mutex CreatePedMutex;
+    inline static std::unordered_map<uint32_t, uint32_t> sm_ModelMappings;
+    inline static bool sm_ModelMappingsInitialized = false;
 
     /*******************************************************/
     static bool
@@ -151,34 +153,88 @@ class PedRandomizer
     }
 
     /*******************************************************/
+    static void InitializeModelMappings()
+    {
+        if (sm_ModelMappingsInitialized)
+            return;
+            
+        sm_ModelMappingsInitialized = true;
+
+        FILE* f = Rainbomizer::Common::GetRainbomizerDataFile(
+            PR::Config().CutsceneModelMappingFile);
+        if (!f)
+            return;
+
+        char line[256];
+        while (fgets(line, sizeof(line), f)) 
+        {
+            char from[128], to[128];
+            if (sscanf(line, "%[^=]=%s", from, to) == 2)
+            {
+                uint32_t fromHash = rage::atStringHash(from);
+                uint32_t toHash = rage::atStringHash(to);
+                sm_ModelMappings[fromHash] = toHash;
+            }
+        }
+        fclose(f);
+    }
+
+    /*******************************************************/
     template <auto &CCutsceneAnimatedActorEntity__CreatePed>
     static void
     RandomizeCutscenePeds (class CCutsceneAnimatedActorEntity *entity,
                            uint32_t model, bool p3)
     {
-        static CutsPedsRandomizer sm_Randomizer;
-
-        // Randomize model (remember model here is the idx, so convert to hash)
         uint32_t hash = CStreaming::GetModelHash (model);
 
-        if (!PR::Config ().RandomizeCutscenePeds
-            || !ShouldRandomizePedModel (model)
-            || !sm_Randomizer.RandomizeObject (hash))
-            return CCutsceneAnimatedActorEntity__CreatePed (entity, model, p3);
-
-        // Load the new model
-        uint32_t newModel = CStreaming::GetModelIndex (hash);
-        if (!CStreaming::HasModelLoaded (newModel))
+        // 如果启用映射替换
+        if (PR::Config().UseCutsceneModelMapping)
+        {
+            InitializeModelMappings();
+            
+            auto it = sm_ModelMappings.find(hash);
+            if (it != sm_ModelMappings.end())
             {
-                CStreaming::RequestModel (newModel, 0);
-                CStreaming::LoadAllObjects (false);
+                uint32_t newModel = CStreaming::GetModelIndex(it->second);
+                if (!CStreaming::HasModelLoaded(newModel))
+                {
+                    CStreaming::RequestModel(newModel, 0);
+                    CStreaming::LoadAllObjects(false);
+                }
+                
+                if (CStreaming::HasModelLoaded(newModel))
+                {
+                    PR::nForcedModelNextRandomization = newModel;
+                }
             }
+            CCutsceneAnimatedActorEntity__CreatePed(entity, model, p3);
+            return;
+        }
 
-        if (CStreaming::HasModelLoaded (newModel))
+        // 原有的随机化逻辑
+        static CutsPedsRandomizer sm_Randomizer;
+        
+        if (!PR::Config().RandomizeCutscenePeds 
+            || !ShouldRandomizePedModel(model)
+            || !sm_Randomizer.RandomizeObject(hash))
+        {
+            CCutsceneAnimatedActorEntity__CreatePed(entity, model, p3);
+            return;
+        }
+
+        // 加载新模型
+        uint32_t newModel = CStreaming::GetModelIndex(hash);
+        if (!CStreaming::HasModelLoaded(newModel))
+        {
+            CStreaming::RequestModel(newModel, 0);
+            CStreaming::LoadAllObjects(false);
+        }
+
+        if (CStreaming::HasModelLoaded(newModel))
             PR::nForcedModelNextRandomization = newModel;
 
-        // Spawn the ped
-        CCutsceneAnimatedActorEntity__CreatePed (entity, model, p3);
+        // 生成ped
+        CCutsceneAnimatedActorEntity__CreatePed(entity, model, p3);
     }
 
 public:

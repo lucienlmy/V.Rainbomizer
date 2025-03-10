@@ -179,6 +179,10 @@ ForcedClipset = ""
 EnableNSFWModels = false
 UseCutsceneModelsFile = true
 
+# Whether to use model mapping file to replace cutscene characters instead of randomizing
+UseCutsceneModelMapping = true
+CutsceneModelMappingFile = "CutsceneModelMapping.txt"
+
 # Missions like Lamar Down, Big Score Heist and other major shootout missions disable
 # new peds to be loaded, which causes a significant hit to the ped variety in the mission
 # (normally resulting in too many player models). This makes it so that doesn't happen.
