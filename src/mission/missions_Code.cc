@@ -166,13 +166,13 @@ MissionRandomizer_CodeFixes::ApplySolomonCamFix (YscUtilsOps &utils)
         return false;
 
     utils.Init ("5d ? ? ? 2c ? ? ? 51 ? ? 50");
-    auto nopEnd = utils.Get<uint8_t> (11);
+    auto nopEnd = utils.GetWorkingIp () + 11;
 
     utils.Init ("29 00 00 48 42 6e 70 2c");
-    utils.NOP (/*Offset=*/7, /*Size=*/nopEnd - utils.Get<uint8_t> (7));
+    utils.NOP (/*Offset=*/7, /*Size=*/nopEnd - utils.GetWorkingIp() + 7);
 
     Rainbomizer::Logger::LogMessage ("solomon1 nop size: %d",
-                                     nopEnd - utils.Get<uint8_t> (7));
+                                     nopEnd - utils.GetWorkingIp() + 7);
 
     return true;
 }
